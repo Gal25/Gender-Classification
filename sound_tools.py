@@ -143,6 +143,8 @@ def add_512_features():
     classifier = EncoderClassifier.from_hparams(source="speechbrain/spkrec-xvect-voxceleb", savedir="pretrained_models/spkrec-xvect-voxceleb")
     MALES_PATH = r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\males"
     FEMALES_PATH = r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\females"
+    MALES_OUT_PATH = r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\males_out"
+    FEMALES_OUT_PATH = r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\females_out"
     male_files = listdir(MALES_PATH)
     female_files = listdir(FEMALES_PATH)
     random.shuffle(male_files)
@@ -160,9 +162,11 @@ def add_512_features():
             embeddings = classifier.encode_batch(signal)
             embeddings = embeddings.detach().cpu().numpy()
             embedding = embeddings[0][0]
-            boys.append(features.tolist() + embedding.tolist()) #720
-            # boys.append(features.tolist()) #208
+            boys.append(features.tolist() + embedding.tolist()) #616
+            # boys.append(features.tolist()) #104
             # boys.append(embedding.tolist()) #512
+            sound = AudioSegment.from_wav(f"{MALES_PATH}/{file}")
+            sound.export(f"{MALES_OUT_PATH}/{file}", format='wav') #ask why this is necessary
             count += 1
     
     count = 0
@@ -175,9 +179,11 @@ def add_512_features():
             embeddings = classifier.encode_batch(signal)
             embeddings = embeddings.detach().cpu().numpy()
             embedding = embeddings[0][0]
-            girls.append(features.tolist() + embedding.tolist()) #720
-            # girls.append(features.tolist()) #208
+            girls.append(features.tolist() + embedding.tolist()) #616
+            # girls.append(features.tolist()) #104
             # girls.append(embedding.tolist()) #512
+            sound = AudioSegment.from_wav(f"{FEMALES_PATH}/{file}")
+            sound.export(f"{FEMALES_OUT_PATH}/{file}", format='wav')
             count += 1
 
     print("boys: ", len(boys))
@@ -191,3 +197,17 @@ if __name__ == '__main__':
 
     add_512_features()
 
+# females:  16541.18400000001
+# males:    25383.10400000012
+
+# total hours: 11.645
+
+# other_males: 78798.42000000016 -> 14673
+# other_females: 35088.51600000023 -> 6472
+
+# total hours: 31.635
+
+# other_males_with_teens: 87298.81199999961
+# other_females_with_teens: 47991.240000000485
+
+# total hours: 37.98
