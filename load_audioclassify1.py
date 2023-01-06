@@ -83,11 +83,9 @@ def exportfile(newAudio,time1,time2,filename,i):
     g=os.listdir()
     if filename[0:-4]+'_'+str(i)+'.wav' in g:
         filename2=str(uuid.uuid4())+'_segment'+'.wav'
-        print('making %s'%(filename2))
         newAudio2.export(filename2,format="wav")
     else:
         filename2=str(uuid.uuid4())+'.wav'
-        print('making %s'%(filename2))
         newAudio2.export(filename2, format="wav")
 
     return filename2
@@ -174,34 +172,11 @@ def featurize(wavfile):
     features1 = np.append(featurize2(wavfile),audio_time_features(wavfile))
     features = np.append(features1,embedding.tolist()).reshape(1,-1)
     features = scaler.transform(features)
-    # features = pca(features)
-
     features = pca_load.transform(features)
-    print(features.shape)
     return features
 
-# def featurize(wavfile):
-#     # pca_reload = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\pca.pkl", 'rb'))
-#     scaler = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\scaler.sav", 'rb'))
-#     pca_reload = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\pca.pkl", 'rb'))
-#
-#     signal, fs = torchaudio.load(wavfile)
-#     embeddings = classifier.encode_batch(signal)
-#     embeddings = embeddings.detach().cpu().numpy()
-#     embedding = embeddings[0][0]
-#     # features = np.append(featurize2(wavfile),embedding.tolist()).reshape(1,-1)
-#     features1 = np.append(featurize2(wavfile), audio_time_features(wavfile))
-#     features = np.append(features1,embedding.tolist()).reshape(1,-1)
-#
-#     scaler.transform(features)
-#     pca_reload.transform(features)
-#     print("77777")
-#
-#     # features=np.append(featurize2(wavfile),audio_time_features(wavfile))
-#     return features
 
 def convert(file):
-
     if file[-4:] != '.wav':
         filename=file[0:-4]+'.wav'
         os.system('ffmpeg -i %s %s'%(file,filename))
@@ -211,8 +186,6 @@ def convert(file):
 
     return filename
 
-
-
 model_list=list()
 os.chdir(model_dir)
 listdir=os.listdir()
@@ -220,8 +193,6 @@ listdir=os.listdir()
 for i in range(len(listdir)):
     if listdir[i][-12:]=='audio.pickle':
         model_list.append(listdir[i])
-
-
 
 
 count=0
@@ -244,39 +215,14 @@ for i in range(len(listdir)):
             else:
                 filename=listdir[i]
 
-            print(filename)
-
             if filename[0:-4]+'.json' not in listdir:
-                print("55555")
-                features = featurize(filename).reshape(1,-1) #check this
-                print(features.shape)
-
-                # scaler = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\scaler.sav", 'rb'))
-
-                # pca = np.load(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\reduced_data.npy")
-                # pca = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\pca.pkl",'rb'))
-                # features=scaler.fit_transform(features)
-                # pca.fit(features)
-                # print("11111")
-                # data = pca.transform(features)
-                # # features=features.reshape(1, -1)
-                # print(data.shape)
-                # print("features", transformed_data.shape)
-                # features=features.reshape(1,-1)
-
-                # features1 = pca(features)
-                # features1=features1.reshape(1,-1)
-                # print("features", features1.shape)
-
+                features = featurize(filename).reshape(1,-1)
                 os.chdir(model_dir)
-
                 class_list=list()
                 model_acc=list()
                 deviations=list()
                 modeltypes=list()
-                print("model_list" ,model_list)
                 for j in range(len(model_list)):
-                    print("2902902902")
                     modelname=model_list[j]
                     i1=modelname.find('_')
                     name1=modelname[0:i1]
@@ -285,88 +231,47 @@ for i in range(len(listdir)):
                     name2=i2[0:i3]
 
                     loadmodel=open(modelname, 'rb')
-                    print(modelname)
                     model = pickle.load(loadmodel)
-
-
-                    # model = VotingClassifier(estimators=[('gradboost',GradientBoostingClassifier(learning_rate=1.0,max_depth=1,random_state=0)),
-                    #                                      ('logit', LogisticRegression(random_state=1)),
-                    #                                      (AdaBoostClassifier(base_estimator='deprecated',n_estimators=100))])
-
                     print(model)
                     loadmodel.close()
-                    print("999999")
-
-
-
-                    print("111111",model.predict(features))
                     output = str(model.predict(features)[0])
-                    print("297297")
-
                     print(output)
-                    # print("1111",model.predict(features)[1])
-                    # Get the probabilities of the prediction
 
-                    # if model== SVC or model == SVC(kernel='linear'):
-                    print("kfsknjfkvnf")
-                    # Get the probabilities of the prediction
-                    print(features.shape)
-
-
-
-                    print("max(features)", np.max(features))
-                    print("min(features)", np.min(features))
+                   # check the  percentage of the result
                     scores = model.decision_function(features)
-                    print("scores", scores)
-
                     if scores < 0:
                         l = (abs(np.min(features))) - abs(scores)
                         l1 = abs(np.min(features)) - l
                         l2 = l1 / (abs(np.min(features)))
                         if l2 < 0.5:
-                            print("blbl " , l2 + 0.5)
+                            print("females " , l2 + 0.5)
                         if l2 > 0.5:
-                            print("blbl " , l2)
+                            print("females " , l2)
 
                     if scores > 0:
                         l = (np.max(features) - scores)
                         l1 = np.max(features)-l
                         l2 =l1/(np.max(features))
                         if l2 < 0.5:
-                            print("blbl " , l2 + 0.5)
+                            print("males " , l2 + 0.5)
                         if l2 > 0.5:
-                            print("blbl " , l2)
+                            print("males " , l2)
 
 
-                    distance = model.decision_function(features)
-                    print("distance",distance )
                     # Create a figure and a subplot
                     fig, ax = plt.subplots()
                     ax.set_xlim(np.min(features), np.max(features))
 
-
                     # Plot the decision function
-                    ax.plot(distance,distance)
+                    ax.plot(scores,scores)
                     plt.ylim(0, 0)
-                    ax.scatter(distance, 0)
+                    ax.scatter(scores, 0)
                     # Show the plot
                     plt.show()
 
-                    # probabilities = model.predict_proba(features)
-                    # print(f"Probabilities: ", scores)
-
-                    # probabilities = model.predict_proba(features)
-                    # male_prob = model.predict(features)[0]
-                    # female_prob = 1 - male_prob
-                    # gender = "male" if male_prob > female_prob else "female"
-                    # print(f"Probabilities:     Male: {male_prob * 100:.2f}%    Female: {female_prob * 100:.2f}%")
                     classname = output
                     class_list.append(classname)
-                    print("111111")
-
                     g=json.load(open(modelname[0:-7]+'.json'))
-                    print("2222", modelname[0:-7])
-
                     model_acc.append(g['accuracy'])
                     deviations.append(g['deviation'])
                     modeltypes.append(g['modeltype'])
