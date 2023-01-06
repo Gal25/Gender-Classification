@@ -169,12 +169,11 @@ import datetime
 import time
 
 def find_closest_to_zero(derivatives):
-  min_diff = 0.00001 #good for 104
+  min_diff = 0.00001
   min_index = None
   for i, d in enumerate(derivatives):
     diff = abs(d)
     if diff < min_diff:
-        # min_diff = diff
         min_index = i
         break
   return derivatives[min_index], min_index
@@ -194,7 +193,7 @@ def pca(json_file_name) :
     scaled_data = scaler.fit_transform(features)
     pca = PCA()
     pca.fit(scaled_data)    # generate coordinates for PCA graph based on the loading scores and scales data
-    reduced_data_1 = pca.transform(scaled_data)
+    pca.transform(scaled_data)
     derivatives = []
     for i in range(1, len(np.cumsum(pca.explained_variance_ratio_))):
         y2 = np.cumsum(pca.explained_variance_ratio_)[i]
@@ -210,70 +209,13 @@ def pca(json_file_name) :
     pca_1.fit(scaled_data)
     reduced_data = pca_1.transform(scaled_data)
 
-    # np.save('reduced_data.npy', reduced_data)
+
     pk.dump(pca_1, open("pca.pkl", "wb"))
     pk.dump(scaler, open("scaler.sav", "wb"))
 
     pce_list = reduced_data.tolist()
 
     return pce_list , labels
-
-
-def add_512_features():
-    classifier = EncoderClassifier.from_hparams(source="speechbrain/spkrec-xvect-voxceleb",
-                                                savedir="pretrained_models/spkrec-xvect-voxceleb")
-    MALES_PATH = r"\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\males"
-    FEMALES_PATH = r"\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\females"
-    MALES_OUT_PATH = r"\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\males_out"
-    FEMALES_OUT_PATH = r"\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\females_out"
-    male_files = listdir(MALES_PATH)
-    female_files = listdir(FEMALES_PATH)
-    random.shuffle(male_files)
-    random.shuffle(female_files)
-    min_amount = 1000
-    boys = []
-    girls = []
-    count = 0
-    for file in male_files:
-        if file[-3:] == 'wav':
-            if count >= min_amount:
-                break
-            features = featurize(f"{MALES_PATH}/{file}")
-            signal, fs = torchaudio.load(f"{MALES_PATH}/{file}")
-            embeddings = classifier.encode_batch(signal)
-            embeddings = embeddings.detach().cpu().numpy()
-            embedding = embeddings[0][0]
-            boys.append(features.tolist() + embedding.tolist()) #616
-            # boys.append(features.tolist()) #104
-            # boys.append(embedding.tolist())  # 512
-            sound = AudioSegment.from_wav(f"{MALES_PATH}/{file}")
-            sound.export(f"{MALES_OUT_PATH}/{file}", format='wav')  # ask why this is necessary
-            count += 1
-
-    count = 0
-    for file in female_files:
-        if file[-3:] == 'wav':
-            if count >= min_amount:
-                break
-            features = featurize(f"{FEMALES_PATH}/{file}")
-            signal, fs = torchaudio.load(f"{FEMALES_PATH}/{file}")
-            embeddings = classifier.encode_batch(signal)
-            embeddings = embeddings.detach().cpu().numpy()
-            embedding = embeddings[0][0]
-            girls.append(features.tolist() + embedding.tolist()) #616
-            # girls.append(features.tolist()) #104
-            # girls.append(embedding.tolist())  # 512
-            sound = AudioSegment.from_wav(f"{FEMALES_PATH}/{file}")
-            sound.export(f"{FEMALES_OUT_PATH}/{file}", format='wav')
-            count += 1
-
-    print("boys: ", len(boys))
-    print("girls: ", len(girls))
-
-    json_obj = {"males": boys, "females": girls}
-    return json_obj
-    # with open('females_males_audio.json', 'w') as outfile:
-    #     json.dump(json_obj, outfile)
 
 
 
@@ -283,11 +225,7 @@ def optimizemodel_sc(train_set2, labels_train_set2, test_set2, labels_test_set2,
                      min_num, selectedfeature, training_data):
     filename = modelname
     start = time.time()
-    jmsgs = train_set2 + test_set2
-    omsgs = labels_train_set2 + labels_test_set2
 
-    c1 = 0
-    c5 = 0
 
     try:
         # decision tree
@@ -407,7 +345,7 @@ def optimizemodel_sc(train_set2, labels_train_set2, test_set2, labels_test_set2,
         c11s = 0
 
     try:
-        ##        #svm
+        #svm
         classifier12 = svm.SVC(kernel='linear', C=1.0)
         classifier12.fit(train_set2, labels_train_set2)
         scores = cross_val_score(classifier12, test_set2, labels_test_set2, cv=5)
@@ -503,23 +441,6 @@ def optimizemodel_sc(train_set2, labels_train_set2, test_set2, labels_test_set2,
 
     model_accuracy.sort(key=itemgetter(1))
     endlen = len(model_accuracy)
-    # Make predictions on the test set
-    predictions = classifier.predict(test_set2)
-
-    # Compute the recall
-    labels1=[]
-    for i in labels_test_set2:
-        if i == 'males':
-            labels1.append(1)
-        if i == 'females':
-            labels1.append(0)
-    predictions1 = []
-    for i in predictions:
-        if i == 'males':
-            predictions1.append(1)
-        if i == 'females':
-            predictions1.append(0)
-
 
     print('saving classifier to disk')
     f = open(modelname + '.pickle', 'wb')
@@ -538,8 +459,7 @@ def optimizemodel_sc(train_set2, labels_train_set2, test_set2, labels_test_set2,
         accstring = accstring + '%s: %s (+/- %s)\n' % (
         str(model_accuracy[i][0]), str(model_accuracy[i][1]), str(model_accuracy[i][2]))
 
-    training = len(train_set2)
-    testing = len(test_set2)
+
 
     summary = 'SUMMARY OF MODEL SELECTION \n\n' + 'WINNING MODEL: \n\n' + '%s: %s (+/- %s) \n\n' % (
     str(model_accuracy[len(model_accuracy) - 1][0]), str(model_accuracy[len(model_accuracy) - 1][1]),
@@ -722,7 +642,7 @@ for i in range(len(folderlist)):
         name = name + '_' + folderlist[i]
 
 start = time.time()
-# modelname=input('what is the name of your classifier?')
+
 modelname = name + '_sc_audio'
 jsonfilename = name + '_audio.json'
 dir3 = os.getcwd() + '/data/'
@@ -846,57 +766,6 @@ if jsonfilename not in os.listdir():
     for i in range(len(folderlist)):
         data.update({folderlist[i]: feature_list2[i]})
 
-    # classifier = EncoderClassifier.from_hparams(source="speechbrain/spkrec-xvect-voxceleb",
-    #                                             savedir="pretrained_models/spkrec-xvect-voxceleb")
-    # MALES_PATH = r"\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\males"
-    # FEMALES_PATH = r"\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\females"
-    # MALES_OUT_PATH = r"\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\males_out"
-    # FEMALES_OUT_PATH = r"\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\females_out"
-    # male_files = listdir(MALES_PATH)
-    # female_files = listdir(FEMALES_PATH)
-    # random.shuffle(male_files)
-    # random.shuffle(female_files)
-    # min_amount = 1000
-    # boys = []
-    # girls = []
-    # count = 0
-    # for file in male_files:
-    #     if file[-3:] == 'wav':
-    #         if count >= min_amount:
-    #             break
-    #         features = featurize(f"{MALES_PATH}/{file}")
-    #         signal, fs = torchaudio.load(f"{MALES_PATH}/{file}")
-    #         embeddings = classifier.encode_batch(signal)
-    #         embeddings = embeddings.detach().cpu().numpy()
-    #         embedding = embeddings[0][0]
-    #         boys.append(features.tolist() + embedding.tolist())  # 616
-    #         # boys.append(features.tolist()) #104
-    #         # boys.append(embedding.tolist())  # 512
-    #         sound = AudioSegment.from_wav(f"{MALES_PATH}/{file}")
-    #         sound.export(f"{MALES_OUT_PATH}/{file}", format='wav')  # ask why this is necessary
-    #         count += 1
-    #
-    # count = 0
-    # for file in female_files:
-    #     if file[-3:] == 'wav':
-    #         if count >= min_amount:
-    #             break
-    #         features = featurize(f"{FEMALES_PATH}/{file}")
-    #         signal, fs = torchaudio.load(f"{FEMALES_PATH}/{file}")
-    #         embeddings = classifier.encode_batch(signal)
-    #         embeddings = embeddings.detach().cpu().numpy()
-    #         embedding = embeddings[0][0]
-    #         girls.append(features.tolist() + embedding.tolist())  # 616
-    #         # girls.append(features.tolist()) #104
-    #         # girls.append(embedding.tolist())  # 512
-    #         sound = AudioSegment.from_wav(f"{FEMALES_PATH}/{file}")
-    #         sound.export(f"{FEMALES_OUT_PATH}/{file}", format='wav')
-    #         count += 1
-    #
-    # print("boys: ", len(boys))
-    # print("girls: ", len(girls))
-    # json_obj = {"males": boys, "females": girls}
-
 
 
     os.chdir(dir3)
@@ -914,12 +783,11 @@ else:
 # note that this assumes a classification problem based on total number of classes
 os.chdir(cur_dir)
 
-# load data - can do this through loading .txt or .json files
-# json file must have 'message' field
-# json_file_name= r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\boys_girls_audio.json"
 data = json.loads(open(jsonfilename).read())
 
 classes = list(data)
+## if we dont want use PCA
+
 # features = list()
 # labels = list()
 # for i in range(len(classes)):
@@ -930,17 +798,10 @@ classes = list(data)
 
 
 features, labels = pca(jsonfilename)
-print(len(features))
-print(len(labels))
 train_set, test_set, train_labels, test_labels = train_test_split(features,
                                                                   labels,
                                                                   test_size=testing_set,
                                                                   random_state=42)
-
-# print("train_set" , train_set)
-# print("test_set", test_set)
-# print("train_labels", train_labels)
-# print("test_labels", test_labels)
 
 
 try:
