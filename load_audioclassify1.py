@@ -1,62 +1,18 @@
-'''
-================================================ 
-##            VOICEBOOK REPOSITORY            ##      
-================================================ 
-repository name: voicebook
-repository version: 1.0
-repository link: https://github.com/jim-schwoebel/voicebook
-author: Jim Schwoebel
-author contact: js@neurolex.co
-description: a book and repo to get you started programming voice applications in Python - 10 chapters and 200+ scripts.
-license category: opensource
-license: Apache 2.0 license
-organization name: NeuroLex Laboratories, Inc.
-location: Seattle, WA
-website: https://neurolex.ai
-release date: 2018-09-28
-This code (voicebook) is hereby released under a Apache 2.0 license license.
-For more information, check out the license terms below.
-================================================
-##               LICENSE TERMS                ##
-================================================
-Copyright 2018 NeuroLex Laboratories, Inc.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-     http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-================================================
-##               SERVICE STATEMENT            ##
-================================================
-If you are using the code written for a larger project, we are
-happy to consult with you and help you with deployment. Our team
-has >10 world experts in Kafka distributed architectures, microservices
-built on top of Node.js / Python / Docker, and applying machine learning to
-model speech and text data.
-We have helped a wide variety of enterprises - small businesses,
-researchers, enterprises, and/or independent developers.
-If you would like to work with us let us know @ js@neurolex.co.
-================================================
-##            LOAD_AUDIOCLASSIFY.PY           ##
-================================================
-Fingerprint audio models in a streaming folder.
-'''
 
 import librosa, pickle, getpass, time, uuid
 import torchaudio
+from matplotlib import pyplot as plt
 from pydub import AudioSegment
 import speech_recognition as sr
 import os, nltk, random, json
 from nltk import word_tokenize
 from nltk.classify import apply_features, SklearnClassifier, maxent
 from sklearn.decomposition import PCA
+from sklearn.feature_selection import VarianceThreshold
+from sklearn.metrics import accuracy_score, f1_score, recall_score, precision_score
 from sklearn.naive_bayes import BernoulliNB, MultinomialNB
 from sklearn.preprocessing import MinMaxScaler
-
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.svm import SVC
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -130,7 +86,6 @@ def exportfile(newAudio,time1,time2,filename,i):
         print('making %s'%(filename2))
         newAudio2.export(filename2,format="wav")
     else:
-        print("4454455")
         filename2=str(uuid.uuid4())+'.wav'
         print('making %s'%(filename2))
         newAudio2.export(filename2, format="wav")
@@ -208,22 +163,42 @@ def audio_time_features(filename):
     return featureslist
 
 classifier = EncoderClassifier.from_hparams(source="speechbrain/spkrec-xvect-voxceleb",savedir="pretrained_models/spkrec-xvect-voxceleb")
-# pca_load = pickle.load(open(r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\pca.pkl", 'rb'))
-# scaler = pickle.load(open(r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\scaler.sav", 'rb'))
+pca_load = pickle.load(open(r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\pca.pkl", 'rb'))
+scaler = pickle.load(open(r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\scaler.sav", 'rb'))
 
 def featurize(wavfile):
     signal, fs = torchaudio.load(wavfile)
     embeddings = classifier.encode_batch(signal)
     embeddings = embeddings.detach().cpu().numpy()
     embedding = embeddings[0][0]
-    features1=np.append(featurize2(wavfile),audio_time_features(wavfile))
+    features1 = np.append(featurize2(wavfile),audio_time_features(wavfile))
     features = np.append(features1,embedding.tolist()).reshape(1,-1)
-    # features = scaler.transform(features)
-    # features=pca_load.transform(features)
+    features = scaler.transform(features)
+    # features = pca(features)
+
+    features = pca_load.transform(features)
     print(features.shape)
     return features
 
-
+# def featurize(wavfile):
+#     # pca_reload = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\pca.pkl", 'rb'))
+#     scaler = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\scaler.sav", 'rb'))
+#     pca_reload = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\pca.pkl", 'rb'))
+#
+#     signal, fs = torchaudio.load(wavfile)
+#     embeddings = classifier.encode_batch(signal)
+#     embeddings = embeddings.detach().cpu().numpy()
+#     embedding = embeddings[0][0]
+#     # features = np.append(featurize2(wavfile),embedding.tolist()).reshape(1,-1)
+#     features1 = np.append(featurize2(wavfile), audio_time_features(wavfile))
+#     features = np.append(features1,embedding.tolist()).reshape(1,-1)
+#
+#     scaler.transform(features)
+#     pca_reload.transform(features)
+#     print("77777")
+#
+#     # features=np.append(featurize2(wavfile),audio_time_features(wavfile))
+#     return features
 
 def convert(file):
 
@@ -245,6 +220,9 @@ listdir=os.listdir()
 for i in range(len(listdir)):
     if listdir[i][-12:]=='audio.pickle':
         model_list.append(listdir[i])
+
+
+
 
 count=0
 errorcount=0
@@ -273,6 +251,22 @@ for i in range(len(listdir)):
                 features = featurize(filename).reshape(1,-1) #check this
                 print(features.shape)
 
+                # scaler = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\scaler.sav", 'rb'))
+
+                # pca = np.load(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\reduced_data.npy")
+                # pca = pickle.load(open(r"C:\Users\galco\PycharmProjects\deepLearning\voice_gender_detection-master\data\pca.pkl",'rb'))
+                # features=scaler.fit_transform(features)
+                # pca.fit(features)
+                # print("11111")
+                # data = pca.transform(features)
+                # # features=features.reshape(1, -1)
+                # print(data.shape)
+                # print("features", transformed_data.shape)
+                # features=features.reshape(1,-1)
+
+                # features1 = pca(features)
+                # features1=features1.reshape(1,-1)
+                # print("features", features1.shape)
 
                 os.chdir(model_dir)
 
@@ -295,9 +289,14 @@ for i in range(len(listdir)):
                     model = pickle.load(loadmodel)
 
 
+                    # model = VotingClassifier(estimators=[('gradboost',GradientBoostingClassifier(learning_rate=1.0,max_depth=1,random_state=0)),
+                    #                                      ('logit', LogisticRegression(random_state=1)),
+                    #                                      (AdaBoostClassifier(base_estimator='deprecated',n_estimators=100))])
+
                     print(model)
                     loadmodel.close()
                     print("999999")
+
 
 
                     print("111111",model.predict(features))
@@ -305,6 +304,62 @@ for i in range(len(listdir)):
                     print("297297")
 
                     print(output)
+                    # print("1111",model.predict(features)[1])
+                    # Get the probabilities of the prediction
+
+                    # if model== SVC or model == SVC(kernel='linear'):
+                    print("kfsknjfkvnf")
+                    # Get the probabilities of the prediction
+                    print(features.shape)
+
+
+
+                    print("max(features)", np.max(features))
+                    print("min(features)", np.min(features))
+                    scores = model.decision_function(features)
+                    print("scores", scores)
+
+                    if scores < 0:
+                        l = (abs(np.min(features))) - abs(scores)
+                        l1 = abs(np.min(features)) - l
+                        l2 = l1 / (abs(np.min(features)))
+                        if l2 < 0.5:
+                            print("blbl " , l2 + 0.5)
+                        if l2 > 0.5:
+                            print("blbl " , l2)
+
+                    if scores > 0:
+                        l = (np.max(features) - scores)
+                        l1 = np.max(features)-l
+                        l2 =l1/(np.max(features))
+                        if l2 < 0.5:
+                            print("blbl " , l2 + 0.5)
+                        if l2 > 0.5:
+                            print("blbl " , l2)
+
+
+                    distance = model.decision_function(features)
+                    print("distance",distance )
+                    # Create a figure and a subplot
+                    fig, ax = plt.subplots()
+                    ax.set_xlim(np.min(features), np.max(features))
+
+
+                    # Plot the decision function
+                    ax.plot(distance,distance)
+                    plt.ylim(0, 0)
+                    ax.scatter(distance, 0)
+                    # Show the plot
+                    plt.show()
+
+                    # probabilities = model.predict_proba(features)
+                    # print(f"Probabilities: ", scores)
+
+                    # probabilities = model.predict_proba(features)
+                    # male_prob = model.predict(features)[0]
+                    # female_prob = 1 - male_prob
+                    # gender = "male" if male_prob > female_prob else "female"
+                    # print(f"Probabilities:     Male: {male_prob * 100:.2f}%    Female: {female_prob * 100:.2f}%")
                     classname = output
                     class_list.append(classname)
                     print("111111")
