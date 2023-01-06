@@ -239,14 +239,19 @@ for i in range(len(listdir)):
 
                    # check the  percentage of the result
                     scores = model.decision_function(features)
+                    # print(scores)
+                    # print(np.max(features))
+                    # print(np.min(features))
                     if scores < 0:
                         l = (abs(np.min(features))) - abs(scores)
                         l1 = abs(np.min(features)) - l
                         l2 = l1 / (abs(np.min(features)))
                         if l2 < 0.5:
                             print("females " , l2 + 0.5)
-                        if l2 > 0.5:
+                        if l2 > 0.5 and l2 < 1:
                             print("females " , l2)
+                        if l2 >= 1:
+                            print("females ", 1)
 
                     if scores > 0:
                         l = (np.max(features) - scores)
@@ -254,17 +259,19 @@ for i in range(len(listdir)):
                         l2 =l1/(np.max(features))
                         if l2 < 0.5:
                             print("males " , l2 + 0.5)
-                        if l2 > 0.5:
+                        if l2 > 0.5 and l2 < 1:
                             print("males " , l2)
+                        if l2 >= 1:
+                            print("males ", 1)
 
 
                     # Create a figure and a subplot
                     fig, ax = plt.subplots()
                     ax.set_xlim(np.min(features), np.max(features))
-
+                    plt.ylim(np.min(features),np.max(features))
                     # Plot the decision function
-                    ax.plot(scores,scores)
-                    plt.ylim(0, 0)
+                    # ax.plot(scores,scores)
+
                     ax.scatter(scores, 0)
                     # Show the plot
                     plt.show()
