@@ -145,20 +145,20 @@ def audio_time_features(filename):
                                0,0,0,0,
                                0,0,0,0])
 
-    #save 100 ms segments in current folder (delete them after)
-    for j in range(len(filelist)):
-        try:
-            features=featurize2(filelist[i])
-            featureslist=featureslist+features
-            os.remove(filelist[j])
-        except:
-            print('error splicing')
-            os.remove(filelist[j])
+        #save 100 ms segments in current folder (delete them after)
+        for j in range(len(filelist)):
+            try:
+                features=featurize2(filelist[i])
+                featureslist=featureslist+features
+                os.remove(filelist[j])
+            except:
+                print('error splicing')
+                os.remove(filelist[j])
 
-    #now scale the featureslist array by the length to get mean in each category
-    featureslist=featureslist/segnum
+        #now scale the featureslist array by the length to get mean in each category
+        featureslist=featureslist/segnum
 
-    return featureslist
+        return featureslist
 
 classifier = EncoderClassifier.from_hparams(source="speechbrain/spkrec-xvect-voxceleb",savedir="pretrained_models/spkrec-xvect-voxceleb")
 pca_load = pickle.load(open(r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\pca.pkl", 'rb'))
