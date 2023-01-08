@@ -168,6 +168,7 @@ import pickle
 import datetime
 import time
 
+#get array of derivatives and return thr index and the value
 def find_closest_to_zero(derivatives):
   min_diff = 0.00001
   min_index = None
@@ -189,11 +190,19 @@ def pca(json_file_name) :
             feature = data[classes[i]][j]
             features.append(feature)
             labels.append(classes[i])
+    # MinMaxScaler is a class in the sklearn.preprocessing module that can be used to scale a dataset
+    # so that all the features lie between a given minimum and maximum value.
     scaler = MinMaxScaler()
+    # It returns a scaled version of the input data, where all the features lie between 0 and 1.
     scaled_data = scaler.fit_transform(features)
+
     pca = PCA()
-    pca.fit(scaled_data)    # generate coordinates for PCA graph based on the loading scores and scales data
+    # fit the model to the input data.
+    pca.fit(scaled_data) 
+    # transform the input data onto the lower-dimensional space.
     pca.transform(scaled_data)
+
+    #crate array with allderivatives
     derivatives = []
     for i in range(1, len(np.cumsum(pca.explained_variance_ratio_))):
         y2 = np.cumsum(pca.explained_variance_ratio_)[i]
@@ -202,9 +211,13 @@ def pca(json_file_name) :
         x1 = i - 1
         derivative = (y2 - y1) / (x2 - x1)
         derivatives.append(derivative)
+
+    # find the first index that close to our epsilon
     n_com, index = find_closest_to_zero(derivatives)
+    #n_components
     n_components = np.cumsum(pca.explained_variance_ratio_)[index]
     print(np.cumsum(pca.explained_variance_ratio_)[index])
+    #new PCA with n_components
     pca_1 = PCA(n_components=n_components)
     pca_1.fit(scaled_data)
     reduced_data = pca_1.transform(scaled_data)
@@ -230,10 +243,13 @@ def optimizemodel_sc(train_set2, labels_train_set2, test_set2, labels_test_set2,
     try:
         # decision tree
         classifier2 = DecisionTreeClassifier(random_state=0)
+        # train the model
         classifier2.fit(train_set2, labels_train_set2)
         scores = cross_val_score(classifier2, test_set2, labels_test_set2, cv=5)
         print('Decision tree accuracy (+/-) %s' % (str(scores.std())))
+        # accuracy for every model
         c2 = scores.mean()
+        # the standard deviation of the elements in the scores array.
         c2s = scores.std()
         print(c2)
     except:
@@ -358,7 +374,7 @@ def optimizemodel_sc(train_set2, labels_train_set2, test_set2, labels_test_set2,
         c12s = 0
 
     # IF IMBALANCED, USE http://scikit-learn.org/dev/modules/generated/sklearn.naive_bayes.ComplementNB.html
-
+    #accuracys
     maxacc = max([c2, c3, c4, c6, c7, c8, c9, c10, c11, c12])
 
 
@@ -442,6 +458,7 @@ def optimizemodel_sc(train_set2, labels_train_set2, test_set2, labels_test_set2,
     model_accuracy.sort(key=itemgetter(1))
     endlen = len(model_accuracy)
 
+    #WINNING MODEL:
     print('saving classifier to disk')
     f = open(modelname + '.pickle', 'wb')
     pickle.dump(classifier, f)
@@ -471,6 +488,7 @@ def optimizemodel_sc(train_set2, labels_train_set2, test_set2, labels_test_set2,
         int(testing_set * 100)) + '% used for testing)' + '\n\n' + 'TRAINING SUMMARY:' + '\n\n' + training_data + 'FEATURES: \n\n %s' % (
                   selectedfeature) + '\n\n' + 'MODELS, ACCURACIES, AND STANDARD DEVIATIONS: \n\n' + accstring + '\n\n' + '(C) 2018, NeuroLex Laboratories'
 
+    # json of males_females_sc_audio.json
     data = {
         'model': modelname,
         'modeltype': model_accuracy[len(model_accuracy) - 1][0],
@@ -486,12 +504,18 @@ def featurize(wavfile):
     # initialize features
     hop_length = 512
     n_fft = 2048
-    # load file
+    # load file ,  y=audio signal , sr = sample rate of the audio data
     y, sr = librosa.load(wavfile)
-    # extract mfcc coefficients
+    # extract mfcc features
+    #hop_length: This determines the resolution of the MFCCs that are extracted.
+    #n_mfcc: the number of MFCCs to return.
+    #The function returns a 2D array of MFCCs,
+    # where the rows represent the different frames of the audio signal
+    # and the columns represent the different MFCC coefficients.
     mfcc = librosa.feature.mfcc(y=y, sr=sr, hop_length=hop_length, n_mfcc=13)
+    #The delta features are calculated by taking the difference between the feature vectors of adjacent frames, weighted by a set of coefficients.
     mfcc_delta = librosa.feature.delta(mfcc)
-    # extract mean, standard deviation, min, and max value in mfcc frame, do this across all mfccs
+    # extract mean, standard deviation (np.std), min, and max value in mfcc frame, do this across all mfccs
     mfcc_features = np.array([np.mean(mfcc[0]), np.std(mfcc[0]), np.amin(mfcc[0]), np.amax(mfcc[0]),
                               np.mean(mfcc[1]), np.std(mfcc[1]), np.amin(mfcc[1]), np.amax(mfcc[1]),
                               np.mean(mfcc[2]), np.std(mfcc[2]), np.amin(mfcc[2]), np.amax(mfcc[2]),
@@ -534,7 +558,7 @@ def featurize(wavfile):
 
     return mfcc_features
 
-
+# add the _segment
 def exportfile(newAudio, time1, time2, filename, i):
     # Exports to a wav file in the current path.
     newAudio2 = newAudio[time1:time2]
@@ -557,7 +581,9 @@ def audio_time_features(filename):
     hop_length = 512
     n_fft = 2048
 
+    # load file ,  y=audio signal , sr = sample rate of the audio data
     y, sr = librosa.load(filename)
+    #The function returns the duration of the audio signal
     duration = float(librosa.core.get_duration(y))
 
     # Now splice an audio signal into individual elements of 100 ms and extract
@@ -571,7 +597,7 @@ def audio_time_features(filename):
         # milliseconds
         timesegment.append(time)
         time = time + deltat * 1000
-
+   #used to create an AudioSegment object from a WAV file
     newAudio = AudioSegment.from_wav(filename)
     filelist = list()
 
@@ -692,7 +718,8 @@ if jsonfilename not in os.listdir():
         dirlist = os.listdir()
         # if broken session, load all previous transcripts
         # this reduces costs if tied to GCP
-        one = list()
+
+        one = list() # list of the features for every file
         for j in range(len(dirlist)):
             try:
                 if dirlist[j][-5:] == '.json':
@@ -707,10 +734,13 @@ if jsonfilename not in os.listdir():
             try:
                 file = dirlist[j]
                 if file[-4:] == '.m4a':
+                    # convert to wav
                     os.system('ffmpeg -i %s %s' % (file, file[0:-4] + '.wav'))
+                    # remove m4a file
                     os.remove(file)
                     file = dirlist[j][0:-4] + '.wav'
 
+                # before he save the file in the folder , Calculation the features
                 if file[-4:] == '.wav' not in dirlist and os.path.getsize(file) > 500:
                     try:
                         # get wavefile
@@ -721,13 +751,15 @@ if jsonfilename not in os.listdir():
                         print(features)
                         # append to list
                         one.append(features.tolist())
-                        # save intermediate .json just in case
+
+                        # save intermediate .json for each file
                         data = {
                             'features': features.tolist(),
                         }
                         jsonfile = open(dirlist[j][0:-4] + '.json', 'w')
                         json.dump(data, jsonfile)
                         jsonfile.close()
+
                     except:
                         print('error')
                 else:
@@ -735,6 +767,7 @@ if jsonfilename not in os.listdir():
             except:
                 pass
 
+        # list of the features for every file
         features_list.append(one)
 
     # randomly shuffle lists
@@ -746,15 +779,16 @@ if jsonfilename not in os.listdir():
         feature_list2.append(one)
         feature_lengths.append(len(one))
 
-    # remember folderlist has all the labels
+    # remember folderlist has all the labels = 2
 
     min_num = np.amin(feature_lengths)
-    # make sure they are the same length (For later) - this avoid errors
+    # make sure they are the same length of features,(For later) - this avoid errors
     while min_num * len(folderlist) != np.sum(feature_lengths):
         for i in range(len(folderlist)):
             while len(feature_list2[i]) > min_num:
                 print('%s is %s more than %s, balancing...' % (
                 folderlist[i].upper(), str(len(feature_list2[i]) - int(min_num)), 'min value'))
+                # if has file with large length of features - pop files
                 feature_list2[i].pop()
         feature_lengths = list()
         for i in range(len(feature_list2)):
@@ -767,9 +801,8 @@ if jsonfilename not in os.listdir():
         data.update({folderlist[i]: feature_list2[i]})
 
 
-
+    # crate the json file - males_females_audio.json
     os.chdir(dir3)
-    # json_obj = add_512_features()
     jsonfile = open(jsonfilename, 'w')
     json.dump(data, jsonfile)
     jsonfile.close()
@@ -786,8 +819,8 @@ os.chdir(cur_dir)
 data = json.loads(open(jsonfilename).read())
 
 classes = list(data)
-## if we dont want use PCA
 
+## if we dont want use PCA
 # features = list()
 # labels = list()
 # for i in range(len(classes)):
@@ -796,8 +829,9 @@ classes = list(data)
 #         features.append(feature)
 #         labels.append(classes[i])
 
-
 features, labels = pca(jsonfilename)
+#train_test_split is a function in the sklearn.model_selection module
+#that splits an input dataset into train and test sets.
 train_set, test_set, train_labels, test_labels = train_test_split(features,
                                                                   labels,
                                                                   test_size=testing_set,
@@ -810,6 +844,7 @@ except:
     os.mkdir(model_dir)
     os.chdir(model_dir)
 
+# all the answer from the model
 g = open(modelname + '_training_data.txt', 'w')
 g.write('train labels' + '\n\n' + str(train_labels) + '\n\n')
 g.write('test labels' + '\n\n' + str(test_labels) + '\n\n')
@@ -823,13 +858,24 @@ selectedfeature = 'audio features (mfcc coefficients).'
 min_num = len(data[classes[0]])
 [audio_model, audio_acc, audio_summary, data]=optimizemodel_sc(train_set,train_labels,test_set,test_labels,modelname,classes,testing_set,min_num,selectedfeature,training_data)
 
+# save audio_summary:
+# WINNING MODEL
+#MODEL FILE NAME
+#EXECUTION TIME
+#['males', 'females']
+#(1000 in each class, 33% used for testing)
+#TRAINING SUMMARY - train labels , tesr labels
+#MODELS, ACCURACIES, AND STANDARD DEVIATIONS
 g = open(modelname + '.txt', 'w')
 g.write(audio_summary)
 g.close()
 
+# the data of WINNING MODEL
 g2 = open(modelname + '.json', 'w')
 json.dump(data, g2)
 g2.close()
 
+#WINNING MODEL
 print(audio_model)
 print(audio_acc)
+
