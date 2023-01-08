@@ -10,6 +10,7 @@ import torchaudio
 import os, nltk, random, json
 from speechbrain.pretrained import EncoderClassifier
 
+# add the _segment
 def exportfile(newAudio, time1, time2, filename, i):
     # Exports to a wav file in the current path.
     newAudio2 = newAudio[time1:time2]
@@ -31,8 +32,9 @@ def audio_time_features(filename):
     timesplit = 0.50
     hop_length = 512
     n_fft = 2048
-
+    # load file ,  y=audio signal , sr = sample rate of the audio data
     y, sr = librosa.load(filename)
+    # The function returns the duration of the audio signal
     duration = float(librosa.core.get_duration(y))
 
     # Now splice an audio signal into individual elements of 100 ms and extract
@@ -46,7 +48,7 @@ def audio_time_features(filename):
         # milliseconds
         timesegment.append(time)
         time = time + deltat * 1000
-
+    # used to create an AudioSegment object from a WAV file
     newAudio = AudioSegment.from_wav(filename)
     filelist = list()
 
@@ -103,12 +105,18 @@ def featurize(wavfile):
     #initialize features 
     hop_length = 512
     n_fft=2048
-    #load file 
+    # load file ,  y=audio signal , sr = sample rate of the audio data
     y, sr = librosa.load(wavfile)
     #extract mfcc coefficients 
+    # hop_length: This determines the resolution of the MFCCs that are extracted.
+    # n_mfcc: the number of MFCCs to return.
+    # The function returns a 2D array of MFCCs,
+    # where the rows represent the different frames of the audio signal
+    # and the columns represent the different MFCC coefficients.
     mfcc = librosa.feature.mfcc(y=y, sr=sr, hop_length=hop_length, n_mfcc=13)
+    # The delta features are calculated by taking the difference between the feature vectors of adjacent frames, weighted by a set of coefficients.
     mfcc_delta = librosa.feature.delta(mfcc) 
-    #extract mean, standard deviation, min, and max value in mfcc frame, do this across all mfccs
+    #extract mean, standard deviation(np.std), min, and max value in mfcc frame, do this across all mfccs
     mfcc_features=np.array([np.mean(mfcc[0]),np.std(mfcc[0]),np.amin(mfcc[0]),np.amax(mfcc[0]),
                             np.mean(mfcc[1]),np.std(mfcc[1]),np.amin(mfcc[1]),np.amax(mfcc[1]),
                             np.mean(mfcc[2]),np.std(mfcc[2]),np.amin(mfcc[2]),np.amax(mfcc[2]),
@@ -140,6 +148,9 @@ def featurize(wavfile):
 
 
 def add_512_features():
+    # The classifier is a machine learning model that takes the embeddings as input and predicts a label
+    # The source argument specifies the source of the pre-trained encoder
+    # savedir argument specifies the directory where the models are saved.
     classifier = EncoderClassifier.from_hparams(source="speechbrain/spkrec-xvect-voxceleb", savedir="pretrained_models/spkrec-xvect-voxceleb")
     MALES_PATH = r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\males"
     FEMALES_PATH = r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\females"
@@ -156,12 +167,19 @@ def add_512_features():
             if count >= min_amount:
                 break
             features = np.append(featurize(f"{MALES_PATH}/{file}"),audio_time_features(f"{MALES_PATH}/{file}"))
+            # The torchaudio.load function is used to load an audio signal from a file
+            # and return a tensor signal
+            # and a scalar fs -  which represents the sample rate of the audio signal.
             signal, fs =torchaudio.load(f"{MALES_PATH}/{file}")
+            # algorithm that takes audio signals and extracts useful features
             embeddings = classifier.encode_batch(signal)
+            # convert to numpy
             embeddings = embeddings.detach().cpu().numpy()
+            # embedding is a single embedding and is assigned the first embedding in the batch
+            # which is the first element of the first element of the embeddings array.
             embedding = embeddings[0][0]
-            boys.append(features.tolist() + embedding.tolist()) #616
-            # boys.append(features.tolist()) #104
+            boys.append(features.tolist() + embedding.tolist()) #720
+            # boys.append(features.tolist()) # 208
             # boys.append(embedding.tolist()) #512
             count += 1
     
@@ -171,15 +189,23 @@ def add_512_features():
             if count >= min_amount:
                 break
             features = np.append(featurize(f"{FEMALES_PATH}/{file}"),audio_time_features(f"{FEMALES_PATH}/{file}"))
+            #The torchaudio.load function is used to load an audio signal from a file
+            # and return a tensor signal
+            # and a scalar fs -  which represents the sample rate of the audio signal.
             signal, fs =torchaudio.load(f"{FEMALES_PATH}/{file}")
+            # algorithm that takes audio signals and extracts useful features
             embeddings = classifier.encode_batch(signal)
+            # convert to numpy
             embeddings = embeddings.detach().cpu().numpy()
+            # embedding is a single embedding and is assigned the first embedding in the batch
+            # which is the first element of the first element of the embeddings array.
             embedding = embeddings[0][0]
-            girls.append(features.tolist() + embedding.tolist()) #616
-            # girls.append(features.tolist()) #104
+            girls.append(features.tolist() + embedding.tolist()) #720
+            # girls.append(features.tolist()) #208
             # girls.append(embedding.tolist()) #512
             count += 1
 
+    # 720 features for each sound file
     print("boys: ", len(boys))
     print("girls: ", len(girls))
 
