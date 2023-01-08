@@ -42,12 +42,17 @@ def featurize2(wavfile):
     #initialize features
     hop_length = 512
     n_fft=2048
-    #load file
+    # load file ,  y=audio signal , sr = sample rate of the audio data
     y, sr = librosa.load(wavfile)
-    #extract mfcc coefficients
+    # hop_length: This determines the resolution of the MFCCs that are extracted.
+    # n_mfcc: the number of MFCCs to return.
+    # The function returns a 2D array of MFCCs,
+    # where the rows represent the different frames of the audio signal
+    # and the columns represent the different MFCC coefficients.
     mfcc = librosa.feature.mfcc(y=y, sr=sr, hop_length=hop_length, n_mfcc=13)
+    # The delta features are calculated by taking the difference between the feature vectors of adjacent frames, weighted by a set of coefficients.
     mfcc_delta = librosa.feature.delta(mfcc)
-    #extract mean, standard deviation, min, and max value in mfcc frame, do this across all mfccs
+    #extract mean, standard deviation(np.std), min, and max value in mfcc frame, do this across all mfccs
     mfcc_features=np.array([np.mean(mfcc[0]),np.std(mfcc[0]),np.amin(mfcc[0]),np.amax(mfcc[0]),
                             np.mean(mfcc[1]),np.std(mfcc[1]),np.amin(mfcc[1]),np.amax(mfcc[1]),
                             np.mean(mfcc[2]),np.std(mfcc[2]),np.amin(mfcc[2]),np.amax(mfcc[2]),
@@ -77,6 +82,7 @@ def featurize2(wavfile):
 
     return mfcc_features
 
+# add the _segment
 def exportfile(newAudio,time1,time2,filename,i):
     #Exports to a wav file in the current path.
     newAudio2 = newAudio[time1:time2]
@@ -96,7 +102,9 @@ def audio_time_features(filename):
     hop_length = 512
     n_fft=2048
 
+    # load file ,  y=audio signal , sr = sample rate of the audio data
     y, sr = librosa.load(filename)
+    # The function returns the duration of the audio signal
     duration=float(librosa.core.get_duration(y))
 
     #Now splice an audio signal into individual elements of 100 ms and extract
@@ -110,7 +118,7 @@ def audio_time_features(filename):
         #milliseconds
         timesegment.append(time)
         time=time+deltat*1000
-
+    # used to create an AudioSegment object from a WAV file
     newAudio = AudioSegment.from_wav(filename)
     filelist=list()
 
@@ -160,18 +168,31 @@ def audio_time_features(filename):
 
         return featureslist
 
+# The classifier is a machine learning model that takes the embeddings as input and predicts a label
+# The source argument specifies the source of the pre-trained encoder
+# savedir argument specifies the directory where the models are saved.
 classifier = EncoderClassifier.from_hparams(source="speechbrain/spkrec-xvect-voxceleb",savedir="pretrained_models/spkrec-xvect-voxceleb")
 pca_load = pickle.load(open(r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\pca.pkl", 'rb'))
 scaler = pickle.load(open(r"C:\Users\User\PycharmProjects\gender_detection\voice_gender_detection-master\data\scaler.sav", 'rb'))
 
 def featurize(wavfile):
+    # The torchaudio.load function is used to load an audio signal from a file
+    # and return a tensor signal
+    # and a scalar fs -  which represents the sample rate of the audio signal.
     signal, fs = torchaudio.load(wavfile)
+    # algorithm that takes audio signals and extracts useful features
     embeddings = classifier.encode_batch(signal)
+    # convert to numpy
     embeddings = embeddings.detach().cpu().numpy()
+    # embedding is a single embedding and is assigned the first embedding in the batch
+    # which is the first element of the first element of the embeddings array.
     embedding = embeddings[0][0]
+    # crate 208 features
     features1 = np.append(featurize2(wavfile),audio_time_features(wavfile))
     features = np.append(features1,embedding.tolist()).reshape(1,-1)
+    # It returns a scaled version of the input data, where all the features lie between 0 and 1.
     features = scaler.transform(features)
+    ## transform the input data onto the lower-dimensional space
     features = pca_load.transform(features)
     return features
 
@@ -190,6 +211,7 @@ model_list=list()
 os.chdir(model_dir)
 listdir=os.listdir()
 
+#the wining model
 for i in range(len(listdir)):
     if listdir[i][-12:]=='audio.pickle':
         model_list.append(listdir[i])
@@ -231,13 +253,17 @@ for i in range(len(listdir)):
                     name2=i2[0:i3]
 
                     loadmodel=open(modelname, 'rb')
+                    # the wining model
                     model = pickle.load(loadmodel)
                     print(model)
                     loadmodel.close()
+                    #model.predict is a method of a machine learning model
+                    # that can be used to make predictions on new data.
                     output = str(model.predict(features)[0])
+                    #the ans
                     print(output)
 
-                   # check the  percentage of the result
+                   # check the percentage of the result
                     scores = model.decision_function(features)
                     # print(scores)
                     # print(np.max(features))
@@ -267,24 +293,24 @@ for i in range(len(listdir)):
 
                     # Create a figure and a subplot
                     fig, ax = plt.subplots()
+                    # the range of x and y
                     ax.set_xlim(np.min(features), np.max(features))
                     plt.ylim(np.min(features),np.max(features))
-                    # Plot the decision function
-                    # ax.plot(scores,scores)
-
                     ax.scatter(scores, 0)
                     # Show the plot
                     plt.show()
 
                     classname = output
                     class_list.append(classname)
+                    
+                    # take the males_females_sc_audio.json data
                     g=json.load(open(modelname[0:-7]+'.json'))
                     model_acc.append(g['accuracy'])
                     deviations.append(g['deviation'])
                     modeltypes.append(g['modeltype'])
 
                 os.chdir(load_dir)
-
+                # open json file for the audio file
                 jsonfilename=filename[0:-4]+'.json'
                 jsonfile=open(jsonfilename,'w')
                 data={
@@ -299,6 +325,7 @@ for i in range(len(listdir)):
                     'count':count,
                     'errorcount':errorcount,
                     }
+                # add the data for the json
                 json.dump(data,jsonfile)
                 jsonfile.close()
 
